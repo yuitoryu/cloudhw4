@@ -1,0 +1,22 @@
+GKE recovery baseline at 2026-11-17T21:14:11.6154584+00:00
+Public URL: http://35.254.41.86
+Original Pod: mnist-inference-f846c5bf-8wnlj UID=cbedfe0b-1eb0-403f-bbee-61f2be9f5f11
+Model SHA-256 before: a792dffed9840a3473a096781623ff203dd05b3ba01ccbdab74246afdcc22887  /models/model.pt
+Resource identities before: {"deployment_uid":"90e0ec93-b4bb-4cf9-9277-aa7238fe0250","deployment_generation":1,"service_uid":"f52bd497-ffbb-4d15-afad-62052502354c","public_ip":"35.254.41.86","pvc_uid":"b7312d15-0865-4997-b7cb-70ca552b4598","persistent_volume":"pvc-b7312d15-0865-4997-b7cb-70ca552b4598","persistent_volume_uid":"97d5824f-4bc0-4481-8817-163682bde17b","job_uid":"8ab72b18-80d8-42a6-851e-12d838403728","job_succeeded":1,"job_completed_utc":"2026-11-17T21:00:37Z"}
+{"actual_digit": 7, "image_id": 0, "model_version": "f7d83241c8e1451ca7ef0e204ded30dd", "predicted_digit": 7}
+{"actual_digit": 4, "image_id": 42, "model_version": "f7d83241c8e1451ca7ef0e204ded30dd", "predicted_digit": 4}
+{"actual_digit": 6, "image_id": 9999, "model_version": "f7d83241c8e1451ca7ef0e204ded30dd", "predicted_digit": 6}
+Smoke test passed against http://35.254.41.86
+Delete requested at 2026-11-17T21:14:13.3433536+00:00
+pod "mnist-inference-f846c5bf-8wnlj" deleted from mnist-hw4 namespace
+Ready replacement observed at 2026-11-17T21:14:30.2468440+00:00 after 16.90 seconds
+Replacement Pod: mnist-inference-f846c5bf-xvdcb UID=b4c78221-ac80-4014-a0fe-fbf3dddc08bd Ready transition UTC=11/17/2026 21:14:29
+ReplicaSet UID before and after: 65e1f601-19ea-45bf-b9f8-785fbc0164da
+Resource identities after: {"deployment_uid":"90e0ec93-b4bb-4cf9-9277-aa7238fe0250","deployment_generation":1,"service_uid":"f52bd497-ffbb-4d15-afad-62052502354c","public_ip":"35.254.41.86","pvc_uid":"b7312d15-0865-4997-b7cb-70ca552b4598","persistent_volume":"pvc-b7312d15-0865-4997-b7cb-70ca552b4598","persistent_volume_uid":"97d5824f-4bc0-4481-8817-163682bde17b","job_uid":"8ab72b18-80d8-42a6-851e-12d838403728","job_succeeded":1,"job_completed_utc":"2026-11-17T21:00:37Z"}
+Model SHA-256 after: a792dffed9840a3473a096781623ff203dd05b3ba01ccbdab74246afdcc22887  /models/model.pt
+INFO:     Loaded model f7d83241c8e1451ca7ef0e204ded30dd from /models
+Public verification after replacement at 2026-11-17T21:14:33.5048560+00:00
+{"actual_digit": 7, "image_id": 0, "model_version": "f7d83241c8e1451ca7ef0e204ded30dd", "predicted_digit": 7}
+{"actual_digit": 4, "image_id": 42, "model_version": "f7d83241c8e1451ca7ef0e204ded30dd", "predicted_digit": 4}
+{"actual_digit": 6, "image_id": 9999, "model_version": "f7d83241c8e1451ca7ef0e204ded30dd", "predicted_digit": 6}
+Smoke test passed against http://35.254.41.86

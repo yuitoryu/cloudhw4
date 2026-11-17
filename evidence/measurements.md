@@ -42,4 +42,17 @@ The `standard-rwo` class uses the Persistent Disk CSI driver with `WaitForFirstC
 
 [GKE training log](gke-training.log)
 
-The inference Deployment loaded version `f7d83241c8e1451ca7ef0e204ded30dd` from the bound claim. The public page served the checked-in HTML, JavaScript, and stylesheet. The smoke test matched all three saved predictions, labels, and the model version, verified the PNG responses, and received HTTP 422 for invalid payloads. Browser screenshot capture is pending. [Public inference page](http://35.254.41.86/) · [GKE resource log](gke-resources.log) · [Public smoke test](gke-smoke.log)
+The inference Deployment loaded version `f7d83241c8e1451ca7ef0e204ded30dd` from the bound claim. The smoke test matched all three saved predictions, labels, and the model version, verified the PNG responses, and received HTTP 422 for invalid payloads. Chrome opened the public Service directly, rejected IDs `-1`, `10000`, and `1.5` with an error message, and then displayed test image `42` with predicted and actual digit `4`. [Public inference page](http://35.254.41.86/) · [Public smoke test](gke-smoke.log) · [Browser screenshot](gke-browser.jpg)
+
+## GKE Pod replacement
+
+On 2026-11-17 at 21:14 UTC, a graceful deletion of the ready inference Pod caused the same ReplicaSet to create a replacement. The client observed `Ready=True` **16.90 seconds** after it issued the delete request. The first verified post-replacement public smoke test started approximately 20 seconds after the delete request. [Recovery log](gke-recovery.log)
+
+| | Original Pod | Replacement Pod |
+|---|---|---|
+| Name | `mnist-inference-f846c5bf-8wnlj` | `mnist-inference-f846c5bf-xvdcb` |
+| UID | `cbedfe0b-1eb0-403f-bbee-61f2be9f5f11` | `b4c78221-ac80-4014-a0fe-fbf3dddc08bd` |
+
+The Deployment, Service, PVC, PV, and completed training Job kept their UIDs. The new Pod loaded the same model version and `/models/model.pt` matched the original SHA-256. Predictions for IDs `0`, `42`, and `9999` again matched the saved references through the same public URL. [Recovery log](gke-recovery.log)
+
+A single replica can experience downtime during replacement or updates. This experiment covered deletion of one Pod. Liveness-triggered container restarts, node failure, and cross-zone recovery each require separate verification.

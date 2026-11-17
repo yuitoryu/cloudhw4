@@ -91,10 +91,12 @@ if ($LASTEXITCODE -ne 0) { throw 'Could not recreate inference.' }
 
 Once the replacement finishes starting, repeat the smoke test with the same training log. Both runs should match the predicted digit, actual digit, and model version for IDs `0`, `42`, and `9999`.
 
-Check the missing-artifact case with a separate, temporary mount. The process should exit with code 3 and report `Required artifact missing: /models/metadata.json`.
+### Verify missing-artifact handling locally
+
+Check the missing-artifact case with an empty read-only mount. The process should exit with code 3 and report `Required artifact missing: /models/metadata.json`. [Startup error log](evidence/missing-artifacts.log)
 
 ```powershell
-docker run --rm --tmpfs /models mnist-inference:v1
+docker run --rm --network none --tmpfs /models:ro -e MODEL_DIR=/models mnist-inference:v1
 $LASTEXITCODE
 ```
 
@@ -218,9 +220,51 @@ Repeat the ordered deploy block above to create the new Job, capture its trainin
 
 ## Verification
 
-The smoke test checks predictions and PNG samples at IDs `0`, `42`, and `9999` and verifies strict request validation. For the recovery check, record the inference Pod's name and UID, delete that Pod, wait for a ready replacement, and repeat the smoke test through the same Service address. The ReplicaSet restores the replica count, readiness controls traffic, and the claim preserves the artifacts. The single replica can cause a service interruption during replacement. [Kubernetes self-healing](https://kubernetes.io/docs/concepts/architecture/self-healing/)
+The smoke test checks predictions and PNG samples at IDs `0`, `42`, and `9999` and expects HTTP 422 for invalid requests. In a browser, enter `42` and confirm the preview, predicted digit, actual digit, and model version appear. Enter `10000` and confirm an error replaces the prediction. [GKE browser screenshot](evidence/gke-browser.jpg)
 
-The kubelet can restart failed containers under the Pod's restart policy. A failing liveness probe can also trigger a container restart. The local recovery experiment measured the replacement of one Pod on a single-node cluster. [Local measurements and evidence](evidence/measurements.md)
+Run the missing-artifact startup check in the isolated local container. [Local missing-artifact check](#verify-missing-artifact-handling-locally)
+
+### Reproduce the GKE Pod replacement
+
+Run this during a planned interruption of the one-replica service. Reuse `$kubectl`, `$gke`, `$publicURL`, and `$trainingLog` from the cloud deployment steps. Confirm the Deployment has one ready Pod and the training Job is complete, then record resource identities and verify the public baseline.
+
+```powershell
+$scope = $gke + @('-n', 'mnist-hw4')
+$resourceIdentityColumns = 'custom-columns=KIND:.kind,NAME:.metadata.name,UID:.metadata.uid,BOUND_VOLUME:.spec.volumeName,COMPLETED:.status.completionTime'
+& $kubectl @scope get deployment/mnist-inference service/mnist-inference pvc/mnist-models job/mnist-training -o $resourceIdentityColumns
+if ($LASTEXITCODE -ne 0) { throw 'Could not record the baseline resource identities.' }
+& $kubectl @scope get pods -l app=mnist-inference -o 'custom-columns=NAME:.metadata.name,UID:.metadata.uid,READY:.status.containerStatuses[0].ready'
+if ($LASTEXITCODE -ne 0) { throw 'Could not inspect the original inference Pod.' }
+& .\.venv\Scripts\python.exe scripts/smoke_test.py $publicURL --reference-log $trainingLog
+if ($LASTEXITCODE -ne 0) { throw 'The baseline smoke test failed.' }
+```
+
+In a second terminal, set the same `$env:KUBECONFIG`, `$kubectl`, and `$scope`. Watch for the new Pod with `& $kubectl @scope get pods -l app=mnist-inference --watch`. In the first terminal, set `$beforePod` to the ready Pod name you just recorded and run the following. Record when the new Pod first reports `1/1` Ready.
+
+```powershell
+& $kubectl @scope exec $beforePod -- sha256sum /models/model.pt
+if ($LASTEXITCODE -ne 0) { throw 'Could not record the original model checksum.' }
+[DateTime]::UtcNow.ToString('o')
+& $kubectl @scope delete "pod/$beforePod" --wait=false
+if ($LASTEXITCODE -ne 0) { throw 'Could not delete the original inference Pod.' }
+```
+
+Set `$afterPod` to the replacement Pod name shown in the watch. Wait for that Pod and compare its UID, model checksum, and public predictions to the baseline. Check that the same Deployment, Service, claim, and completed Job are present. If public `/readyz` is still unavailable when the replacement reports Ready, allow the load balancer health check to catch up, then rerun the smoke test.
+
+```powershell
+& $kubectl @scope wait --for=condition=Ready "pod/$afterPod" --timeout=10m
+if ($LASTEXITCODE -ne 0) { throw 'The replacement did not become ready.' }
+& $kubectl @scope get "pod/$afterPod" -o 'custom-columns=NAME:.metadata.name,UID:.metadata.uid'
+if ($LASTEXITCODE -ne 0) { throw 'Could not record the replacement Pod identity.' }
+& $kubectl @scope get deployment/mnist-inference service/mnist-inference pvc/mnist-models job/mnist-training -o $resourceIdentityColumns
+if ($LASTEXITCODE -ne 0) { throw 'Could not record the resource identities after replacement.' }
+& $kubectl @scope exec $afterPod -- sha256sum /models/model.pt
+if ($LASTEXITCODE -ne 0) { throw 'Could not record the replacement model checksum.' }
+& .\.venv\Scripts\python.exe scripts/smoke_test.py $publicURL --reference-log $trainingLog
+if ($LASTEXITCODE -ne 0) { throw 'The post-replacement smoke test failed.' }
+```
+
+The ReplicaSet restores the replica count, readiness controls traffic, and the claim preserves the artifacts. The kubelet can restart a failed container or a container that fails its liveness probe. The GKE experiment verified Pod replacement and measured 16.90 seconds to observed readiness. [Kubernetes self-healing](https://kubernetes.io/docs/concepts/architecture/self-healing/) · [GKE measurements](evidence/measurements.md#gke-pod-replacement)
 
 ## Cleanup
 

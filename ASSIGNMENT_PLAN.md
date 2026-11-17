@@ -246,11 +246,11 @@ The report PDF and evidence files are outputs to create later. Exclude downloade
 - [x] **09.2 Run the training Job.** Apply the Job, watch scheduling and logs, and wait for successful completion with a bounded timeout. Diagnose failures before proceeding.
 - [x] **09.3 Capture training evidence.** Save Job status, logs, training duration, test accuracy, model version, and PVC/PV information before deleting any completed resources.
 - [x] **09.4 Start inference.** Only after training completes, apply the Deployment. Inspect logs and wait for readiness. Confirm it loads the expected model version from `/models`.
-- [ ] **09.5 Expose the service.** Apply the Service, wait for an external address, and open the HTTP URL from the browser without port forwarding.
-- [ ] **09.6 Verify public predictions.** After cloud training saves its artifacts, reload those saved weights in the training process and record reference predictions for IDs `0`, `42`, and `9999`, along with the model version. Run the smoke test against the public URL and compare its predicted digits and model version with those references. No model download is required. Save a screenshot with URL, input, image, and output visible.
+- [x] **09.5 Expose the service.** Apply the Service, wait for an external address, and open the HTTP URL from the browser without port forwarding.
+- [x] **09.6 Verify public predictions.** After cloud training saves its artifacts, reload those saved weights in the training process and record reference predictions for IDs `0`, `42`, and `9999`, along with the model version. Run the smoke test against the public URL and compare its predicted digits and model version with those references. No model download is required. Save a screenshot with URL, input, image, and output visible.
 - [x] **09.7 Record the operational sequence.** Put the exact successful commands in the README, including how to create a new training Job for a future run. For retraining with this design, stop inference first, complete training, and restart inference afterward.
 
-The public HTTP smoke test passed without port forwarding. The browser check and screenshot in 09.5 and 09.6 are pending. [Public smoke test](evidence/gke-smoke.log)
+The public HTTP smoke test passed without port forwarding. Chrome displayed test image `42` and predicted digit `4` at the public address. [Public smoke test](evidence/gke-smoke.log) · [Browser screenshot](evidence/gke-browser.jpg)
 
 **Deliverables:** Completed cloud training Job, ready inference Deployment, public URL, cloud evidence.
 
@@ -260,15 +260,17 @@ The public HTTP smoke test passed without port forwarding. The browser check and
 
 **Depends on:** Step 09.
 
-- [ ] **10.1 Establish a baseline.** Record a successful prediction, model version, current Pod name/UID, and timestamp. Record the model artifact checksum if practical.
-- [ ] **10.2 Trigger Pod replacement.** Delete only the inference Pod while preserving the Deployment, Service, and PVC. Watch for a replacement Pod and record its new name/UID.
-- [ ] **10.3 Verify recovered service.** Wait for readiness and repeat the same prediction through the same public URL. Confirm the same model version and result without retraining. Measure time to readiness and observed request failure duration separately if collecting both.
+- [x] **10.1 Establish a baseline.** Record a successful prediction, model version, current Pod name/UID, and timestamp. Record the model artifact checksum if practical.
+- [x] **10.2 Trigger Pod replacement.** Delete only the inference Pod while preserving the Deployment, Service, and PVC. Watch for a replacement Pod and record its new name/UID.
+- [x] **10.3 Verify recovered service.** Wait for readiness and repeat the same prediction through the same public URL. Confirm the same model version and result without retraining. Measure time to readiness and observed request failure duration separately if collecting both.
 - [x] **10.4 Explain the recovery mechanism accurately.** The Deployment/ReplicaSet restores the desired Pod count. Container restart behavior and liveness probes address container failures. Readiness controls traffic eligibility. The PVC preserves artifacts across Pod replacement.
 - [x] **10.5 Verify invalid-input behavior.** Check negative, out-of-range, and malformed inputs through the API and confirm the UI presents useful errors.
 - [x] **10.6 Verify missing-artifact behavior locally.** Start inference with an empty test volume and confirm startup/readiness fails clearly. Do not delete the working cloud model to perform this check.
 - [x] **10.7 Document limits.** State that one replica can experience downtime during replacement or updates, and this test does not prove liveness-triggered restarts, node-failure recovery, or cross-zone resilience.
 
 A separate controlled liveness-failure experiment is optional and is not part of this step's completion gate.
+
+The replacement Pod was observed ready 16.90 seconds after the delete request. The original training Job, model checksum, and public prediction results matched across the replacement. [Recovery measurements](evidence/measurements.md#gke-pod-replacement) · [Before-and-after log](evidence/gke-recovery.log)
 
 **Deliverables:** Before/after evidence, recovery measurements, acceptance results, accurate self-healing explanation.
 
