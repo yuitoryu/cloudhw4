@@ -1,0 +1,4 @@
+{"actual_digit": 7, "image_id": 0, "model_version": "bea4f27f87ee4f90852ea3f3d97d0107", "predicted_digit": 7}
+{"actual_digit": 4, "image_id": 42, "model_version": "bea4f27f87ee4f90852ea3f3d97d0107", "predicted_digit": 4}
+{"actual_digit": 6, "image_id": 9999, "model_version": "bea4f27f87ee4f90852ea3f3d97d0107", "predicted_digit": 6}
+Smoke test passed against http://127.0.0.1:8002

@@ -1,0 +1,5 @@
+-r ../common/requirements.txt
+fastapi==0.135.2
+pillow==12.2.0
+pydantic==2.12.5
+uvicorn==0.42.0

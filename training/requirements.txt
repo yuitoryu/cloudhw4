@@ -1,0 +1,2 @@
+-r ../common/requirements.txt
+torchvision==0.26.0+cpu

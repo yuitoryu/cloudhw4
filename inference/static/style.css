@@ -1,0 +1,95 @@
+:root {
+  color-scheme: light;
+  font-family: system-ui, sans-serif;
+  color: #182333;
+  background: #f2f5f7;
+  --muted: #506176;
+  --border: #d5dfe8;
+  --blue: #194db0;
+}
+
+* { box-sizing: border-box; }
+
+body { margin: 0; }
+
+main {
+  width: min(44rem, calc(100% - 2rem));
+  margin: clamp(2rem, 8vw, 6rem) auto;
+}
+
+header { margin-bottom: 2rem; }
+
+h1 {
+  margin: 0 0 .5rem;
+  font-size: clamp(2rem, 6vw, 3.25rem);
+  line-height: 1.08;
+  letter-spacing: -.05em;
+}
+
+p { margin: 0; color: var(--muted); }
+
+form, .result {
+  padding: clamp(1rem, 4vw, 1.5rem);
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+}
+
+label { display: block; margin-bottom: .5rem; font-weight: 650; }
+
+.form-row { display: flex; gap: .75rem; }
+
+input, button {
+  min-height: 2.75rem;
+  padding: .65rem .9rem;
+  font: inherit;
+  border-radius: .55rem;
+}
+
+input { width: 10rem; max-width: 60%; border: 1px solid #8a9bad; }
+
+button { border: 0; background: var(--blue); color: white; cursor: pointer; font-weight: 650; }
+button:hover:not(:disabled) { background: #123c8e; }
+button:disabled { opacity: .6; cursor: wait; }
+input:focus-visible, button:focus-visible { outline: 3px solid #729ce6; outline-offset: 2px; }
+[aria-invalid="true"] { border-color: #a12038; }
+
+#id-range, #status { margin-top: .65rem; font-size: .875rem; }
+#status:empty { margin-top: 0; }
+#status.error { color: #a12038; }
+
+.result {
+  display: grid;
+  grid-template-columns: minmax(0, 11rem) minmax(0, 1fr);
+  gap: clamp(1.25rem, 5vw, 2rem);
+  margin-top: 1rem;
+  align-items: center;
+}
+
+.result[hidden] { display: none; }
+figure, dl, dd { margin: 0; }
+
+.image-frame {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: .65rem;
+  background: #080b11;
+}
+
+.image-frame img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
+figcaption { margin-top: .55rem; font-size: .875rem; color: var(--muted); }
+
+dl { display: grid; grid-template-columns: 1fr 1fr; gap: .85rem; }
+dt { font-size: .875rem; color: var(--muted); }
+.digit { font-size: clamp(2.75rem, 8vw, 4rem); font-weight: 700; line-height: 1.2; }
+#prediction { color: var(--blue); }
+
+.version { grid-column: 1 / -1; padding-top: .8rem; border-top: 1px solid var(--border); }
+.version dd { margin-top: .35rem; overflow-wrap: anywhere; font: .85rem ui-monospace, monospace; }
+
+@media (max-width: 29rem) {
+  .result { grid-template-columns: minmax(0, 1fr); }
+  figure { width: min(100%, 11rem); }
+}

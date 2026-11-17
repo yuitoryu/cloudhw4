@@ -1,0 +1,24 @@
+INFO:     Started server process [1]
+INFO:     Waiting for application startup.
+ERROR:    Traceback (most recent call last):
+  File "/app/inference/app.py", line 31, in lifespan
+    artifacts = load_artifacts(directory)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/common/artifacts.py", line 55, in load_artifacts
+    raise FileNotFoundError(f"Required artifact missing: {path}")
+FileNotFoundError: Required artifact missing: /models/metadata.json
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/site-packages/starlette/routing.py", line 661, in lifespan
+    async with self.lifespan_context(app) as maybe_state:
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/app/inference/app.py", line 33, in lifespan
+    raise RuntimeError(f"Cannot load model artifacts from {directory}: {error}") from error
+RuntimeError: Cannot load model artifacts from /models: Required artifact missing: /models/metadata.json
+
+ERROR:    Application startup failed. Exiting.

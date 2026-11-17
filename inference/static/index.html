@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MNIST Digit Classifier</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>MNIST Digit Classifier</h1>
+      <p>Choose an image from the MNIST test set to see how the model classifies it.</p>
+    </header>
+
+    <form id="predict-form" novalidate>
+      <label for="image-id">Test image ID</label>
+      <div class="form-row">
+        <input id="image-id" name="image_id" type="number" min="0" max="9999" step="1"
+               value="0" required aria-describedby="id-range">
+        <button type="submit">Predict</button>
+      </div>
+      <p id="id-range">Enter a whole number from 0 to 9,999.</p>
+      <p id="status" role="status"></p>
+    </form>
+
+    <div class="result" id="result" hidden>
+      <figure>
+        <div class="image-frame"><img id="sample" width="28" height="28" alt=""></div>
+        <figcaption id="caption"></figcaption>
+      </figure>
+      <dl>
+        <div>
+          <dt>Predicted digit</dt>
+          <dd id="prediction" class="digit"></dd>
+        </div>
+        <div>
+          <dt>Actual digit</dt>
+          <dd id="actual" class="digit"></dd>
+        </div>
+        <div class="version">
+          <dt>Model version</dt>
+          <dd id="version"></dd>
+        </div>
+      </dl>
+    </div>
+  </main>
+</body>
+</html>

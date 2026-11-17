@@ -1,0 +1,19 @@
+Before Pod: mnist-inference-58894c6fbb-mw7wc (b6fa3710-f3e8-4098-a419-2c7ccbdce934)
+Inference image: sha256:c94a17c21af7ac729fca3e5897b660f8f6388ea9660fe6953e2aca099573c5c0
+Service: d7adbabb-4e08-4027-be95-bbf4653e4344
+PVC/PV: f0c57e91-7f3b-472d-9582-e5b832c5315d / pvc-f0c57e91-7f3b-472d-9582-e5b832c5315d
+Training Job completed: 11/17/2026 20:17:20
+{"actual_digit": 7, "image_id": 0, "model_version": "f9ad9dea80a44d1cbe65082a46d3e946", "predicted_digit": 7}
+{"actual_digit": 4, "image_id": 42, "model_version": "f9ad9dea80a44d1cbe65082a46d3e946", "predicted_digit": 4}
+{"actual_digit": 6, "image_id": 9999, "model_version": "f9ad9dea80a44d1cbe65082a46d3e946", "predicted_digit": 6}
+Smoke test passed against http://127.0.0.1:52244
+pod "mnist-inference-58894c6fbb-mw7wc" deleted from mnist-hw4 namespace
+pod/mnist-inference-58894c6fbb-jl5g6 condition met
+Deletion initiated: 2026-11-17T15:23:50.9766829-05:00
+After Pod: mnist-inference-58894c6fbb-jl5g6 (19e83c15-2589-4a22-8324-9f2a2fd8be65)
+Pod replacement to Ready: 2.73 s
+Same Service, PVC, original completed training Job, and inference image.
+{"actual_digit": 7, "image_id": 0, "model_version": "f9ad9dea80a44d1cbe65082a46d3e946", "predicted_digit": 7}
+{"actual_digit": 4, "image_id": 42, "model_version": "f9ad9dea80a44d1cbe65082a46d3e946", "predicted_digit": 4}
+{"actual_digit": 6, "image_id": 9999, "model_version": "f9ad9dea80a44d1cbe65082a46d3e946", "predicted_digit": 6}
+Smoke test passed against http://127.0.0.1:52244
