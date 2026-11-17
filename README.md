@@ -56,18 +56,47 @@ The optional `--reference-log` must come from the training run that produced the
 
 ## Local containers
 
-Run these commands from the repository root with Docker Desktop's Linux engine. The training container exits after writing and reloading the artifacts. Inference mounts the same named volume read-only.
+Run these commands from the repository root with Docker Desktop's Linux engine. If you're retraining, stop and remove the existing `mnist-hw4-inference` container first. The training container exits after writing and reloading the artifacts. Inference mounts the same named volume read-only.
 
 ```powershell
 docker build --platform linux/amd64 -f training/Dockerfile -t mnist-training:v1 .
+if ($LASTEXITCODE -ne 0) { throw 'Training image build failed.' }
 docker build --platform linux/amd64 -f inference/Dockerfile -t mnist-inference:v1 .
+if ($LASTEXITCODE -ne 0) { throw 'Inference image build failed.' }
+New-Item -ItemType Directory -Force -Path artifacts | Out-Null
 docker volume create mnist-hw4-models
-docker run --rm --cpus 2 --memory 2g --mount source=mnist-hw4-models,target=/models mnist-training:v1
+if ($LASTEXITCODE -ne 0) { throw 'Could not create the model volume.' }
+docker run --rm --cpus 2 --memory 2g --mount source=mnist-hw4-models,target=/models mnist-training:v1 2>&1 | Tee-Object -FilePath artifacts/docker-training.log
 if ($LASTEXITCODE -ne 0) { throw 'Training failed. Rerun it before starting inference.' }
 docker run --detach --name mnist-hw4-inference --cpus 1 --memory 1g --publish 127.0.0.1:8080:8000 --mount source=mnist-hw4-models,target=/models,readonly mnist-inference:v1
+if ($LASTEXITCODE -ne 0) { throw 'Could not start inference.' }
 ```
 
-Open `http://127.0.0.1:8080/` or run the smoke test against it. To verify the handoff survives container replacement, remove `mnist-hw4-inference`, repeat its `docker run`, then check that the same IDs return the same predictions and model version.
+Wait for `docker logs mnist-hw4-inference` to show `Application startup complete`. Open `http://127.0.0.1:8080/` and use the host Python from the local setup to compare the live predictions with the reference predictions in the training log.
+
+```powershell
+& .\.venv\Scripts\python.exe scripts/smoke_test.py http://127.0.0.1:8080 --reference-log artifacts/docker-training.log
+```
+
+Stop and remove the inference container, then start it again with the same volume.
+
+```powershell
+docker stop mnist-hw4-inference
+if ($LASTEXITCODE -ne 0) { throw 'Could not stop inference.' }
+docker rm mnist-hw4-inference
+if ($LASTEXITCODE -ne 0) { throw 'Could not remove inference.' }
+docker run --detach --name mnist-hw4-inference --cpus 1 --memory 1g --publish 127.0.0.1:8080:8000 --mount source=mnist-hw4-models,target=/models,readonly mnist-inference:v1
+if ($LASTEXITCODE -ne 0) { throw 'Could not recreate inference.' }
+```
+
+Once the replacement finishes starting, repeat the smoke test with the same training log. Both runs should match the predicted digit, actual digit, and model version for IDs `0`, `42`, and `9999`.
+
+Check the missing-artifact case with a separate, temporary mount. The process should exit with code 3 and report `Required artifact missing: /models/metadata.json`.
+
+```powershell
+docker run --rm --tmpfs /models mnist-inference:v1
+$LASTEXITCODE
+```
 
 ## Local Kubernetes
 
