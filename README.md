@@ -6,13 +6,15 @@ A CPU-only training Job saves its model on a persistent volume. A separate FastA
 
 The assignment requires CPU-only Google Cloud deployment, an interactive hosted URL, source files (40 points), and a report under five pages (60 points). Deadline, upload format, grading URL availability period, and additional course cloud restrictions are open questions. The requirements below follow ASSIGNMENT_PLAN.md.
 
-| Requirement | Planned deliverable or evidence |
+| Requirement | Deliverable or evidence |
 |---|---|
 | Train on CPU in Google Cloud | training/train.py, training/Dockerfile, k8s/training-job.yaml and successful Job logs |
 | Persist and reload the model | k8s/pvc.yaml, training output and inference startup logs with model version |
 | Serve inference at a hosted URL | inference/app.py, inference/Dockerfile, k8s/inference-deployment.yaml and k8s/inference-service.yaml |
 | Demonstrate user interaction and frontend/backend integration | inference/static/, public URL and input/output screenshots of image selection and prediction |
-| Explain workflow, implementation, course concepts, observations, issues, self-healing and sources | report/report.pdf using evidence logs and Pod replacement observations |
+| Explain workflow, implementation, course concepts, observations, issues, self-healing and sources | [Four-page report](report/report.pdf) with measurements, public browser output and Pod replacement evidence |
+
+For grading, open the [public MNIST demo](http://35.254.41.86/) and submit image ID `42`. The page shows the image, predicted and actual digits, and the model version. The [submission section](#submission-package) lists the files and the archive command.
 
 ## Model and API contract
 
@@ -30,7 +32,7 @@ Both processes use `MODEL_DIR`, which defaults to `artifacts/` locally and `/mod
 
 ## Local execution
 
-Use Python 3.12 on Windows or Linux x86-64 and run from the repository root. The first training run downloads MNIST. The following examples use PowerShell 7 and its UTF-8 log output. [PyTorch CPU wheels](https://pytorch.org/get-started/previous-versions/)
+These commands use Python 3.12 and PowerShell 7 on Windows x86-64. Run them from the repository root. The first training run downloads MNIST. [PyTorch CPU wheels](https://pytorch.org/get-started/previous-versions/)
 
 ```powershell
 python -m venv .venv
@@ -112,7 +114,7 @@ The manifests use namespace `mnist-hw4`, the `standard-rwo` StorageClass, and a 
 
 The assignment uses the regional GKE Autopilot cluster `mnist-hw4` in `us-central1` under project `summer-bond-475605-r6`. The two manifests point to immutable `v2` tags in the private Artifact Registry repository `mnist-hw4`. If using a different registry or release tag, update both image references. Use a `kubectl` client within one minor version of the GKE control plane. This deployment used the official Windows v1.36.4 client at `artifacts/gke-kubectl.exe`. [Windows kubectl installation](https://kubernetes.io/docs/tasks/tools/install-kubectl-windows/)
 
-On a fresh project, enable Compute Engine, GKE, and Artifact Registry. Create a private Docker repository and a dedicated node service account. Grant that account `roles/container.defaultNodeServiceAccount` in the project and `roles/artifactregistry.reader` on the repository. The examples assume your CLI account can create those resources and act as the node account. [Autopilot cluster setup](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/creating-an-autopilot-cluster) · [Artifact Registry access](https://docs.cloud.google.com/artifact-registry/docs/access-control)
+For cloud deployment, use Docker with its Linux engine, the Google Cloud CLI, `gke-gcloud-auth-plugin`, a compatible `kubectl`, and a Google Cloud project with billing enabled. Replace `$project` and `$region` below for your environment. On a fresh project, enable Compute Engine, GKE, and Artifact Registry. Create a private Docker repository and a dedicated node service account. Grant that account `roles/container.defaultNodeServiceAccount` in the project and `roles/artifactregistry.reader` on the repository. The examples assume your CLI account can create those resources and act as the node account. [Autopilot cluster setup](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/creating-an-autopilot-cluster) · [Artifact Registry access](https://docs.cloud.google.com/artifact-registry/docs/access-control)
 
 ```powershell
 $project = 'summer-bond-475605-r6'
@@ -127,15 +129,22 @@ gcloud artifacts repositories add-iam-policy-binding mnist-hw4 --project=$projec
 gcloud container clusters create-auto mnist-hw4 --project=$project --location=$region --release-channel=regular --service-account=$nodeAccount --labels=assignment=mnist-hw4
 ```
 
-Build the local images using the [Local containers](#local-containers) commands and push the `linux/amd64` runtime manifests. Use a new release tag for future builds.
+Build the two local images with the `docker build` commands in Local containers and push the `linux/amd64` runtime manifests. Use a new `$releaseTag` for future builds because the registry tags are immutable. Set `spec.template.spec.containers[0].image` in each of `k8s/training-job.yaml` and `k8s/inference-deployment.yaml` to its matching registry image and tag before applying the manifests. [Local container builds](#local-containers)
 
 ```powershell
-$registry = 'us-central1-docker.pkg.dev/summer-bond-475605-r6/mnist-hw4'
-gcloud auth configure-docker us-central1-docker.pkg.dev
-docker tag mnist-training:v1 "$registry/training:v2"
-docker tag mnist-inference:v1 "$registry/inference:v2"
-docker push --platform linux/amd64 "$registry/training:v2"
-docker push --platform linux/amd64 "$registry/inference:v2"
+$registryHost = "$region-docker.pkg.dev"
+$registry = "$registryHost/$project/mnist-hw4"
+$releaseTag = 'v2'
+gcloud auth configure-docker $registryHost
+if ($LASTEXITCODE -ne 0) { throw 'Could not configure Artifact Registry authentication.' }
+docker tag mnist-training:v1 "$registry/training:$releaseTag"
+if ($LASTEXITCODE -ne 0) { throw 'Could not tag the training image.' }
+docker tag mnist-inference:v1 "$registry/inference:$releaseTag"
+if ($LASTEXITCODE -ne 0) { throw 'Could not tag the inference image.' }
+docker push --platform linux/amd64 "$registry/training:$releaseTag"
+if ($LASTEXITCODE -ne 0) { throw 'Could not push the training image.' }
+docker push --platform linux/amd64 "$registry/inference:$releaseTag"
+if ($LASTEXITCODE -ne 0) { throw 'Could not push the inference image.' }
 ```
 
 Get credentials into a dedicated kubeconfig and use the explicit GKE context for every deployment command. On Windows x86-64, the following block downloads and verifies the client used in this deployment. If you already have a compatible client, set `$kubectl` to its path and skip the download. If the Job fails, inspect its logs and rerun it successfully before applying the Deployment.
@@ -150,9 +159,9 @@ $expectedHash = (Invoke-RestMethod -Uri "$clientDownload.sha256" -ErrorAction St
 if ((Get-FileHash -Algorithm SHA256 -LiteralPath $kubectl).Hash -ne $expectedHash) {
     throw 'kubectl checksum verification failed.'
 }
-gcloud container clusters get-credentials mnist-hw4 --project=summer-bond-475605-r6 --location=us-central1
+gcloud container clusters get-credentials mnist-hw4 --project=$project --location=$region
 if ($LASTEXITCODE -ne 0) { throw 'Could not get credentials for the assignment cluster.' }
-$gke = @('--context', 'gke_summer-bond-475605-r6_us-central1_mnist-hw4')
+$gke = @('--context', "gke_${project}_${region}_mnist-hw4")
 & $kubectl @gke get nodes,namespaces
 if ($LASTEXITCODE -ne 0) { throw 'Could not inspect the assignment cluster.' }
 & $kubectl @gke get storageclass standard-rwo
@@ -268,4 +277,37 @@ The ReplicaSet restores the replica count, readiness controls traffic, and the c
 
 ## Cleanup
 
-After the required URL availability period is confirmed and met, remove assignment resources and verify the disposition of the persistent disk.
+Wait until the demo and grading period are over before removing resources. Reuse the explicit `$gke` context from Cloud deployment. Record the underlying disk handle and reclaim policy before releasing the claim, and preserve any artifacts you still need. The deployed `Delete` policy normally removes the underlying disk when the claim is released. A `Retain` policy leaves the volume and disk for separate review. [Persistent volume reclaim policies](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#reclaiming)
+
+```powershell
+$scope = $gke + @('-n', 'mnist-hw4')
+$boundVolume = & $kubectl @scope get pvc mnist-models -o 'jsonpath={.spec.volumeName}'
+if ($LASTEXITCODE -ne 0 -or -not $boundVolume) { throw 'Could not identify the bound volume.' }
+& $kubectl @gke get pv $boundVolume -o 'custom-columns=VOLUME:.metadata.name,POLICY:.spec.persistentVolumeReclaimPolicy,DISK:.spec.csi.volumeHandle'
+if ($LASTEXITCODE -ne 0) { throw 'Could not inspect the reclaim policy and disk.' }
+```
+
+After reviewing the policy and preserving the artifacts, remove the public Service and workloads before releasing the claim.
+
+```powershell
+& $kubectl @scope delete service/mnist-inference deployment/mnist-inference job/mnist-training --wait=true --timeout=10m
+if ($LASTEXITCODE -ne 0) { throw 'Could not remove the Service and workloads.' }
+& $kubectl @scope delete pvc/mnist-models --wait=true --timeout=10m
+if ($LASTEXITCODE -ne 0) { throw 'Could not release the model claim.' }
+gcloud compute forwarding-rules list --project=$project
+gcloud compute disks list --project=$project
+```
+
+Compare the remaining cloud resources with the demo's former public IP and recorded disk handle. If the cluster and registry are dedicated to this assignment and you have finished using them, remove them with `gcloud container clusters delete mnist-hw4 --project=$project --location=$region` and `gcloud artifacts repositories delete mnist-hw4 --project=$project --location=$region`. Preserve shared course infrastructure.
+
+## Submission package
+
+The submission includes the report PDF, the training and inference programs and Dockerfiles, the Kubernetes manifests, the smoke test, and the supporting evidence. From a Git checkout at the final revision, recreate the ZIP with the following. The paths select committed submission files and exclude local environments, credentials, kubeconfigs, datasets, and trained weights.
+
+```powershell
+New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+git archive --format=zip --output=artifacts/cloudhw4-source.zip --prefix=cloudhw4/ HEAD .dockerignore .gitignore ASSIGNMENT_PLAN.md README.md common training inference k8s scripts tests evidence report/build_report.py report/report.pdf
+if ($LASTEXITCODE -ne 0) { throw 'Could not package the submission.' }
+```
+
+To rebuild the report, install `reportlab` in a Python environment and run `python report/build_report.py` from the repository root. The script uses the captured GKE browser image in `evidence/`.

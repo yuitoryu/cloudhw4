@@ -8,7 +8,7 @@ This document is an implementation plan, not a record of completed work. Checkbo
 
 ### Agreed scope after plan review
 
-Keep this an assignment-sized implementation: CPU MNIST, image-ID input, a simple FastAPI webpage, two containers, one PVC, and one inference replica. Prioritize a working, explainable end-to-end demonstration. Report work is deferred for now; its submission requirements remain listed for later.
+Keep this an assignment-sized implementation: CPU MNIST, image-ID input, a simple FastAPI webpage, two containers, one PVC, and one inference replica. Prioritize a working, explainable end-to-end demonstration. Step 11 records the report and submission package.
 
 Verification consists of one small smoke-test script, reference predictions from the actual trained artifact, and one Pod-replacement experiment. A separate liveness-failure experiment is optional. Use successful training completion, required-file checks, successful loading, and a model version to verify artifacts. Checksum manifests, automatic rollback, and production availability features are outside scope. If training fails, rerun it successfully before starting inference.
 
@@ -278,18 +278,18 @@ The replacement Pod was observed ready 16.90 seconds after the delete request. T
 
 ### Step 11 — Write the report and package the submission
 
-**Deferred for now.** Resume this step after implementation and verification; early report drafting is not part of the current work. Retain lightweight logs and screenshots during implementation so later reporting can use actual evidence.
-
 **Depends on:** Step 10; collect notes throughout earlier steps.
 
-- [ ] **11.1 Draft page 1: purpose and architecture.** Explain the user workflow, diagram, selected components, and mapping to course concepts.
-- [ ] **11.2 Draft page 2: implementation.** Describe training, evaluation, artifact persistence, model loading, containers, and frontend/API integration. Include key implementation decisions rather than full source listings.
-- [ ] **11.3 Draft page 3: deployment and results.** Summarize the cloud deployment sequence, measured results, and readable screenshots of real user input/output.
-- [ ] **11.4 Draft page 4: recovery and discussion.** Describe the recovery experiment, observations, actual issues and fixes, limitations, and references. Keep the total below five pages.
-- [ ] **11.5 Attribute sources.** Cite documentation, dataset/model sources, and borrowed or adapted code. Identify what was implemented or modified personally. Follow any course-specific AI-use policy if one exists.
-- [ ] **11.6 Complete reproducibility instructions.** Ensure the README includes prerequisites, configuration placeholders, build/push commands, deployment order, URL discovery, checks, retraining procedure, and cleanup.
-- [ ] **11.7 Review the source package.** Include required code, Dockerfiles, manifests, and explanations. Exclude secrets, environments, caches, and unnecessary large generated files. Include model binaries only if the submission rules request them.
-- [ ] **11.8 Review the final PDF.** Confirm page count, readable figures, visible input/output examples, working references, and consistency between reported measurements and evidence.
+- [x] **11.1 Draft page 1: purpose and architecture.** Explain the user workflow, diagram, selected components, and mapping to course concepts.
+- [x] **11.2 Draft page 2: implementation.** Describe training, evaluation, artifact persistence, model loading, containers, and frontend/API integration. Include key implementation decisions rather than full source listings.
+- [x] **11.3 Draft page 3: deployment and results.** Summarize the cloud deployment sequence, measured results, and readable screenshots of real user input/output.
+- [x] **11.4 Draft page 4: recovery and discussion.** Describe the recovery experiment, observations, actual issues and fixes, limitations, and references. Keep the total below five pages.
+- [x] **11.5 Attribute sources.** Cite documentation, dataset/model sources, and borrowed or adapted code. Identify what was implemented or modified personally. Follow any course-specific AI-use policy if one exists.
+- [x] **11.6 Complete reproducibility instructions.** Ensure the README includes prerequisites, configuration placeholders, build/push commands, deployment order, URL discovery, checks, retraining procedure, and cleanup.
+- [x] **11.7 Review the source package.** Include required code, Dockerfiles, manifests, and explanations. Exclude secrets, environments, caches, and unnecessary large generated files. Include model binaries only if the submission rules request them.
+- [x] **11.8 Review the final PDF.** Confirm page count, readable figures, visible input/output examples, working references, and consistency between reported measurements and evidence.
+
+The report uses the archived GKE measurements and browser capture. The README documents how to recreate the submission ZIP from the final revision. [Four-page report](report/report.pdf) · [Submission package](README.md#submission-package)
 
 **Deliverables:** Submission source package, complete README, report PDF under five pages.
 
