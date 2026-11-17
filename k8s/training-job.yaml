@@ -14,7 +14,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: trainer
-          image: us-central1-docker.pkg.dev/summer-bond-475605-r6/mnist-hw4/training:v1
+          image: us-central1-docker.pkg.dev/summer-bond-475605-r6/mnist-hw4/training:v2
           env:
             - name: MODEL_DIR
               value: /models

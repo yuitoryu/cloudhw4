@@ -1,0 +1,49 @@
+Client Version: v1.36.4
+Kustomize Version: v5.8.1
+Server Version: v1.36.4-gke.2377000
+allowVolumeExpansion: true
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  annotations:
+    components.gke.io/component-name: pdcsi
+    components.gke.io/component-version: 1.36.33
+    components.gke.io/layer: addon
+    storageclass.kubernetes.io/is-default-class: "true"
+  creationTimestamp: "2026-11-17T20:55:42Z"
+  labels:
+    addonmanager.kubernetes.io/mode: EnsureExists
+    k8s-app: gcp-compute-persistent-disk-csi-driver
+  name: standard-rwo
+  resourceVersion: "1794948942464847007"
+  uid: 11369a2b-15ad-4846-bb2b-fa6b36efc518
+parameters:
+  type: pd-balanced
+provisioner: pd.csi.storage.gke.io
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer
+deployment.apps/mnist-inference created (server dry run)
+service/mnist-inference created (server dry run)
+namespace/mnist-hw4 unchanged (server dry run)
+persistentvolumeclaim/mnist-models created (server dry run)
+job.batch/mnist-training created (server dry run)
+NAME                       STATUS     COMPLETIONS   DURATION   AGE     CONTAINERS   IMAGES                                                                   SELECTOR
+job.batch/mnist-training   Complete   1/1           3m41s      3m42s   trainer      us-central1-docker.pkg.dev/summer-bond-475605-r6/mnist-hw4/training:v2   batch.kubernetes.io/controller-uid=8ab72b18-80d8-42a6-851e-12d838403728
+
+NAME                                 STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE     VOLUMEMODE
+persistentvolumeclaim/mnist-models   Bound    pvc-b7312d15-0865-4997-b7cb-70ca552b4598   10Gi       RWO            standard-rwo   <unset>                 3m43s   Filesystem
+NAME                                       CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                    STORAGECLASS   VOLUMEATTRIBUTESCLASS   REASON   AGE    VOLUMEMODE
+pvc-b7312d15-0865-4997-b7cb-70ca552b4598   10Gi       RWO            Delete           Bound    mnist-hw4/mnist-models   standard-rwo   <unset>                          2m4s   Filesystem
+INFO:     Started server process [1]
+INFO:     Waiting for application startup.
+INFO:     Loaded model f7d83241c8e1451ca7ef0e204ded30dd from /models
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     169.254.4.6:39884 - "GET /readyz HTTP/1.1" 200 OK
+INFO:     169.254.4.6:39886 - "GET /readyz HTTP/1.1" 200 OK
+Public URL http://35.254.41.86
+NAME                              READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS   IMAGES                                                                    SELECTOR
+deployment.apps/mnist-inference   1/1     1            1           84s   inference    us-central1-docker.pkg.dev/summer-bond-475605-r6/mnist-hw4/inference:v2   app=mnist-inference
+
+NAME                      TYPE           CLUSTER-IP       EXTERNAL-IP    PORT(S)        AGE   SELECTOR
+service/mnist-inference   LoadBalancer   34.118.235.171   35.254.41.86   80:31528/TCP   46s   app=mnist-inference

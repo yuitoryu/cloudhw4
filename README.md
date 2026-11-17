@@ -104,34 +104,64 @@ You can exercise the Job, claim, Deployment, and Service on an isolated Minikube
 
 ## Cloud deployment
 
+The MNIST demo serves the model trained on GKE. [Public MNIST demo](http://35.254.41.86/) · [Deployment and smoke-test evidence](evidence/measurements.md#gke-deployment)
+
 The manifests use namespace `mnist-hw4`, the `standard-rwo` StorageClass, and a 10 GiB claim for a balanced Persistent Disk. The GKE class delays provisioning until the training Pod is scheduled. Training requests one CPU and 768 MiB, with limits of two CPUs and 2 GiB. Inference runs one replica with the `Recreate` strategy, requests 250 millicores and 384 MiB, and caps usage at one CPU and 1 GiB. Its startup probe allows up to two minutes to load artifacts. [GKE Persistent Disk CSI driver](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/persistent-volumes/gce-pd-csi-driver) · [Compute Engine disk sizes](https://docs.cloud.google.com/compute/docs/disks/regional-persistent-disk)
 
-The image paths in `k8s/` target the candidate project `summer-bond-475605-r6` and repository `mnist-hw4` in `us-central1`. Confirm course eligibility and quota before provisioning. If using a different registry, update both image paths. These commands assume a CPU-only GKE cluster with the Persistent Disk CSI driver, a Docker repository in Artifact Registry, and a node identity with repository read access. On this Windows setup, use the SDK's `kubectl.exe` to avoid the older client on `PATH`. [Environment and cloud checks](evidence/troubleshooting.md) · [GKE node identities](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/service-accounts)
+The assignment uses the regional GKE Autopilot cluster `mnist-hw4` in `us-central1` under project `summer-bond-475605-r6`. The two manifests point to immutable `v2` tags in the private Artifact Registry repository `mnist-hw4`. If using a different registry or release tag, update both image references. Use a `kubectl` client within one minor version of the GKE control plane. This deployment used the official Windows v1.36.4 client at `artifacts/gke-kubectl.exe`. [Windows kubectl installation](https://kubernetes.io/docs/tasks/tools/install-kubectl-windows/)
+
+On a fresh project, enable Compute Engine, GKE, and Artifact Registry. Create a private Docker repository and a dedicated node service account. Grant that account `roles/container.defaultNodeServiceAccount` in the project and `roles/artifactregistry.reader` on the repository. The examples assume your CLI account can create those resources and act as the node account. [Autopilot cluster setup](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/creating-an-autopilot-cluster) · [Artifact Registry access](https://docs.cloud.google.com/artifact-registry/docs/access-control)
+
+```powershell
+$project = 'summer-bond-475605-r6'
+$region = 'us-central1'
+$nodeAccount = "mnist-hw4-node@$project.iam.gserviceaccount.com"
+$nodeMember = "serviceAccount:$nodeAccount"
+gcloud services enable compute.googleapis.com container.googleapis.com artifactregistry.googleapis.com --project=$project
+gcloud artifacts repositories create mnist-hw4 --project=$project --location=$region --repository-format=docker --immutable-tags
+gcloud iam service-accounts create mnist-hw4-node --project=$project
+gcloud projects add-iam-policy-binding $project --member=$nodeMember --role=roles/container.defaultNodeServiceAccount --condition=None
+gcloud artifacts repositories add-iam-policy-binding mnist-hw4 --project=$project --location=$region --member=$nodeMember --role=roles/artifactregistry.reader --condition=None
+gcloud container clusters create-auto mnist-hw4 --project=$project --location=$region --release-channel=regular --service-account=$nodeAccount --labels=assignment=mnist-hw4
+```
+
+Build the local images using the [Local containers](#local-containers) commands and push the `linux/amd64` runtime manifests. Use a new release tag for future builds.
 
 ```powershell
 $registry = 'us-central1-docker.pkg.dev/summer-bond-475605-r6/mnist-hw4'
 gcloud auth configure-docker us-central1-docker.pkg.dev
-docker tag mnist-training:v1 "$registry/training:v1"
-docker tag mnist-inference:v1 "$registry/inference:v1"
-docker push "$registry/training:v1"
-docker push "$registry/inference:v1"
+docker tag mnist-training:v1 "$registry/training:v2"
+docker tag mnist-inference:v1 "$registry/inference:v2"
+docker push --platform linux/amd64 "$registry/training:v2"
+docker push --platform linux/amd64 "$registry/inference:v2"
 ```
 
-Get credentials for the intended cluster, then choose its exact context name from the context list. If the Job fails, inspect its logs and rerun it successfully before applying the Deployment.
+Get credentials into a dedicated kubeconfig and use the explicit GKE context for every deployment command. On Windows x86-64, the following block downloads and verifies the client used in this deployment. If you already have a compatible client, set `$kubectl` to its path and skip the download. If the Job fails, inspect its logs and rerun it successfully before applying the Deployment.
 
 ```powershell
-$kubectl = Join-Path (Split-Path -Parent (Get-Command gcloud.cmd).Source) 'kubectl.exe'
-& $kubectl config get-contexts
-$gkeContext = Read-Host 'Enter the GKE context name'
-if ($gkeContext -notlike 'gke_summer-bond-475605-r6_*') { throw 'Expected a GKE context in the configured project.' }
-$gke = @('--context', $gkeContext)
+New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+$env:KUBECONFIG = Join-Path (Resolve-Path artifacts) 'gke-kubeconfig.yaml'
+$kubectl = Join-Path (Resolve-Path artifacts) 'gke-kubectl.exe'
+$clientDownload = 'https://dl.k8s.io/release/v1.36.4/bin/windows/amd64/kubectl.exe'
+Invoke-WebRequest -Uri $clientDownload -OutFile $kubectl -ErrorAction Stop
+$expectedHash = (Invoke-RestMethod -Uri "$clientDownload.sha256" -ErrorAction Stop).Trim()
+if ((Get-FileHash -Algorithm SHA256 -LiteralPath $kubectl).Hash -ne $expectedHash) {
+    throw 'kubectl checksum verification failed.'
+}
+gcloud container clusters get-credentials mnist-hw4 --project=summer-bond-475605-r6 --location=us-central1
+if ($LASTEXITCODE -ne 0) { throw 'Could not get credentials for the assignment cluster.' }
+$gke = @('--context', 'gke_summer-bond-475605-r6_us-central1_mnist-hw4')
+& $kubectl @gke get nodes,namespaces
+if ($LASTEXITCODE -ne 0) { throw 'Could not inspect the assignment cluster.' }
 & $kubectl @gke get storageclass standard-rwo
+if ($LASTEXITCODE -ne 0) { throw 'Retry after GKE finishes installing the Persistent Disk CSI add-on.' }
 ```
 
 After checking the context and StorageClass, apply the workloads in order.
 
 ```powershell
 & $kubectl @gke apply -f k8s/namespace.yaml
+if ($LASTEXITCODE -ne 0) { throw 'Could not apply the assignment namespace.' }
 & $kubectl @gke apply --dry-run=server -f k8s/
 if ($LASTEXITCODE -ne 0) { throw 'Manifest validation failed.' }
 & $kubectl @gke apply -f k8s/pvc.yaml -f k8s/training-job.yaml
@@ -139,8 +169,9 @@ if ($LASTEXITCODE -ne 0) { throw 'Could not apply the training Job and claim.' }
 & $kubectl @gke -n mnist-hw4 wait --for=condition=complete job/mnist-training --timeout=25m
 if ($LASTEXITCODE -ne 0) { throw 'Training did not complete. Inspect the Job before starting inference.' }
 $trainingPod = & $kubectl @gke -n mnist-hw4 get pods -l batch.kubernetes.io/job-name=mnist-training --field-selector=status.phase=Succeeded -o 'jsonpath={.items[0].metadata.name}'
-if (-not $trainingPod) { throw 'Could not find the successful training Pod.' }
-& $kubectl @gke -n mnist-hw4 logs $trainingPod | Set-Content -Encoding utf8 evidence/gke-training.log
+if ($LASTEXITCODE -ne 0 -or -not $trainingPod) { throw 'Could not find the successful training Pod.' }
+$trainingLog = 'artifacts/gke-training.log'
+& $kubectl @gke -n mnist-hw4 logs $trainingPod | Set-Content -Encoding utf8 -LiteralPath $trainingLog -ErrorAction Stop
 if ($LASTEXITCODE -ne 0) { throw 'Could not capture the successful training log.' }
 & $kubectl @gke -n mnist-hw4 get job,pvc
 & $kubectl @gke apply -f k8s/inference-deployment.yaml
@@ -148,10 +179,42 @@ if ($LASTEXITCODE -ne 0) { throw 'Could not apply the inference Deployment.' }
 & $kubectl @gke -n mnist-hw4 rollout status deployment/mnist-inference --timeout=5m
 if ($LASTEXITCODE -ne 0) { throw 'Inference did not become ready.' }
 & $kubectl @gke apply -f k8s/inference-service.yaml
-& $kubectl @gke -n mnist-hw4 get service mnist-inference --watch
+if ($LASTEXITCODE -ne 0) { throw 'Could not apply the public Service.' }
+& $kubectl @gke -n mnist-hw4 wait '--for=jsonpath={.status.loadBalancer.ingress[0].ip}' service/mnist-inference --timeout=10m
+if ($LASTEXITCODE -ne 0) { throw 'The Service did not receive an external IP.' }
+$publicIP = & $kubectl @gke -n mnist-hw4 get service mnist-inference -o 'jsonpath={.status.loadBalancer.ingress[0].ip}'
+if ($LASTEXITCODE -ne 0 -or -not $publicIP) { throw 'Could not read the public IP.' }
+$publicURL = "http://$publicIP"
+$deadline = [DateTime]::UtcNow.AddMinutes(5)
+do {
+    try { Invoke-RestMethod -Uri "$publicURL/readyz" -TimeoutSec 5; break }
+    catch {
+        if ([DateTime]::UtcNow -ge $deadline) { throw }
+        Start-Sleep -Seconds 5
+    }
+} while ($true)
+& .\.venv\Scripts\python.exe scripts/smoke_test.py $publicURL --reference-log $trainingLog
+if ($LASTEXITCODE -ne 0) { throw 'The public smoke test failed.' }
 ```
 
-When an external IP appears, use its `http://` URL in the browser and in the smoke test with `--reference-log evidence/gke-training.log`. For retraining, scale inference to zero, wait for its Pod to terminate, then delete and reapply the training Job. After it completes, apply the Deployment manifest to restore one inference replica.
+Open `$publicURL` in a browser and submit an image ID. Newly allocated load balancers may take additional time to pass health checks.
+
+To retrain, stop inference and wait for its Pod to terminate before recreating the Job. The claim stays in place, and the completed Job overwrites the artifact files.
+
+```powershell
+& $kubectl @gke -n mnist-hw4 scale deployment/mnist-inference --replicas=0
+if ($LASTEXITCODE -ne 0) { throw 'Could not stop inference.' }
+$inferencePods = & $kubectl @gke -n mnist-hw4 get pods -l app=mnist-inference -o name
+if ($LASTEXITCODE -ne 0) { throw 'Could not inspect the inference Pods.' }
+if ($inferencePods) {
+    & $kubectl @gke -n mnist-hw4 wait --for=delete $inferencePods --timeout=5m
+    if ($LASTEXITCODE -ne 0) { throw 'Inference did not stop.' }
+}
+& $kubectl @gke -n mnist-hw4 delete job mnist-training --ignore-not-found --wait=true
+if ($LASTEXITCODE -ne 0) { throw 'Could not remove the previous training Job.' }
+```
+
+Repeat the ordered deploy block above to create the new Job, capture its training log, restore the Deployment, and verify the new model at the public URL.
 
 ## Verification
 

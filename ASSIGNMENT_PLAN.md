@@ -72,7 +72,7 @@ The training Job must finish successfully before inference starts. The model is 
 
 Collect evidence and troubleshooting notes during every step; do not defer them until report writing.
 
-Local execution passed in Windows Python, Docker, and Minikube. The local cluster validated all five manifests and exercised the Job, PVC, inference Deployment, Service, and Pod replacement. The current handoff is local. [Local evidence](evidence/measurements.md)
+Local execution passed in Windows Python, Docker, and Minikube. GKE ran the CPU training Job, bound the model claim, and exposed the inference Deployment. The public smoke test matched the saved cloud model. [Local and GKE evidence](evidence/measurements.md)
 
 ## 3. Proposed repository structure
 
@@ -171,7 +171,7 @@ The report PDF and evidence files are outputs to create later. Exclude downloade
 - [x] **04.4 Implement `GET /healthz`.** Return a lightweight process-health response. Avoid expensive model inference in the liveness endpoint.
 - [x] **04.5 Implement `GET /readyz`.** Return success only after the model and required dataset have loaded. Missing or incompatible artifacts must prevent readiness and produce clear logs; never silently serve an untrained model.
 - [x] **04.6 Verify the contract.** Exercise valid boundary IDs, a typical valid ID, negative/out-of-range IDs, and malformed input. Check that the actual label is only used for display/comparison.
-- [ ] **04.7 Create the smoke test.** Implement `scripts/smoke_test.py` with a configurable base URL. Require HTTP 200 and the expected response fields for IDs `0`, `42`, and `9999`. Require HTTP 422 for IDs `-1` and `10000`, a missing ID, and non-integer values such as `1.5` or `"abc"`. Use strict integer validation. Run the same script locally and against the public URL.
+- [x] **04.7 Create the smoke test.** Implement `scripts/smoke_test.py` with a configurable base URL. Require HTTP 200 and the expected response fields for IDs `0`, `42`, and `9999`. Require HTTP 422 for IDs `-1` and `10000`, a missing ID, and non-integer values such as `1.5` or `"abc"`. Use strict integer validation. Run the same script locally and against the public URL.
 
 **Deliverables:** `inference/app.py`, pinned inference dependencies, API verification results.
 
@@ -210,13 +210,13 @@ The report PDF and evidence files are outputs to create later. Exclude downloade
 
 **Depends on:** Step 06; project access and feasibility checks are required in Step 01.
 
-- [ ] **07.1 Select cloud configuration.** Record project ID, region, zone if applicable, cluster name, namespace, repository name, and image tags. Prefer course-provided resources when available.
-- [ ] **07.2 Prepare project services.** Verify billing/project access and enable the required GKE, Compute Engine, and Artifact Registry services. Enable Cloud Build only if using it.
-- [ ] **07.3 Create or select the cluster.** Use CPU nodes only. For a new small demonstration cluster, select a modest configuration with room for system workloads and the measured application requirements. Verify quotas and available storage classes.
-- [ ] **07.4 Configure access.** Obtain cluster credentials and verify the intended context before applying manifests. Confirm `kubectl` can inspect nodes and namespaces.
-- [ ] **07.5 Prepare Artifact Registry.** Create/select a Docker repository and configure the build environment to push images. Ensure the cluster's image-pulling identity can read the repository.
-- [ ] **07.6 Push versioned images.** Push explicit release tags such as `v1`; record full image paths and preferably digests. Avoid mutable `latest` references in the submitted deployment.
-- [ ] **07.7 Record resource ownership.** List resources created for the assignment to support later cleanup. Set an appropriate budget alert, recognizing it is not a spending cap.
+- [x] **07.1 Select cloud configuration.** Record project ID, region, zone if applicable, cluster name, namespace, repository name, and image tags. Prefer course-provided resources when available.
+- [x] **07.2 Prepare project services.** Verify billing/project access and enable the required GKE, Compute Engine, and Artifact Registry services. Enable Cloud Build only if using it.
+- [x] **07.3 Create or select the cluster.** Use CPU nodes only. For a new small demonstration cluster, select a modest configuration with room for system workloads and the measured application requirements. Verify quotas and available storage classes.
+- [x] **07.4 Configure access.** Obtain cluster credentials and verify the intended context before applying manifests. Confirm `kubectl` can inspect nodes and namespaces.
+- [x] **07.5 Prepare Artifact Registry.** Create/select a Docker repository and configure the build environment to push images. Ensure the cluster's image-pulling identity can read the repository.
+- [x] **07.6 Push versioned images.** Push explicit release tags such as `v1`; record full image paths and preferably digests. Avoid mutable `latest` references in the submitted deployment.
+- [x] **07.7 Record resource ownership.** List resources created for the assignment to support later cleanup. Set an appropriate budget alert, recognizing it is not a spending cap.
 
 **Deliverables:** Accessible GKE cluster, registry images, recorded cloud configuration.
 
@@ -227,12 +227,12 @@ The report PDF and evidence files are outputs to create later. Exclude downloade
 **Depends on:** Step 07.
 
 - [x] **08.1 Create `namespace.yaml`.** Use a dedicated namespace and apply it consistently to all namespaced resources.
-- [ ] **08.2 Create `pvc.yaml`.** Request sufficient storage using a verified StorageClass and `ReadWriteOnce`. A small request such as 5 GiB is a starting point only if supported. Record the provisioner's minimum allocation and reclaim policy. Dynamic provisioning normally eliminates the need for a handwritten PV manifest.
+- [x] **08.2 Create `pvc.yaml`.** Request sufficient storage using a verified StorageClass and `ReadWriteOnce`. A small request such as 5 GiB is a starting point only if supported. Record the provisioner's minimum allocation and reclaim policy. Dynamic provisioning normally eliminates the need for a handwritten PV manifest.
 - [x] **08.3 Create `training-job.yaml`.** Configure one completion, one worker, a finite retry limit, CPU/memory requests and limits, the training image, and a writable PVC mount. Choose resources based on local observations; do not request GPUs.
 - [x] **08.4 Create `inference-deployment.yaml`.** Configure one replica, `Recreate`, the inference image, matching labels, port, environment variables, resource requests/limits, and a read-only model volume mount.
 - [x] **08.5 Configure probes.** Add startup, readiness, and liveness HTTP probes. Allow sufficient startup time for loading artifacts. Readiness checks `/readyz`; liveness checks `/healthz`. Choose thresholds based on observed startup behavior.
 - [x] **08.6 Create `inference-service.yaml`.** Use `type: LoadBalancer`, expose HTTP, and map its target port to the server port. Ensure the selector exactly matches the inference Pod labels.
-- [ ] **08.7 Validate manifests.** Check syntax and run server-side dry-run validation against the selected cluster after creating the namespace. Resolve unsupported fields and configuration errors before starting workloads.
+- [x] **08.7 Validate manifests.** Check syntax and run server-side dry-run validation against the selected cluster after creating the namespace. Resolve unsupported fields and configuration errors before starting workloads.
 
 **Deliverables:** All five YAML files, documented resource and probe choices.
 
@@ -242,13 +242,15 @@ The report PDF and evidence files are outputs to create later. Exclude downloade
 
 **Depends on:** Step 08.
 
-- [ ] **09.1 Apply the namespace and PVC.** Inspect claim status and events. A claim using `WaitForFirstConsumer` may remain Pending until a consuming Pod is scheduled; do not require binding before creating the Job.
-- [ ] **09.2 Run the training Job.** Apply the Job, watch scheduling and logs, and wait for successful completion with a bounded timeout. Diagnose failures before proceeding.
-- [ ] **09.3 Capture training evidence.** Save Job status, logs, training duration, test accuracy, model version, and PVC/PV information before deleting any completed resources.
-- [ ] **09.4 Start inference.** Only after training completes, apply the Deployment. Inspect logs and wait for readiness. Confirm it loads the expected model version from `/models`.
+- [x] **09.1 Apply the namespace and PVC.** Inspect claim status and events. A claim using `WaitForFirstConsumer` may remain Pending until a consuming Pod is scheduled; do not require binding before creating the Job.
+- [x] **09.2 Run the training Job.** Apply the Job, watch scheduling and logs, and wait for successful completion with a bounded timeout. Diagnose failures before proceeding.
+- [x] **09.3 Capture training evidence.** Save Job status, logs, training duration, test accuracy, model version, and PVC/PV information before deleting any completed resources.
+- [x] **09.4 Start inference.** Only after training completes, apply the Deployment. Inspect logs and wait for readiness. Confirm it loads the expected model version from `/models`.
 - [ ] **09.5 Expose the service.** Apply the Service, wait for an external address, and open the HTTP URL from the browser without port forwarding.
 - [ ] **09.6 Verify public predictions.** After cloud training saves its artifacts, reload those saved weights in the training process and record reference predictions for IDs `0`, `42`, and `9999`, along with the model version. Run the smoke test against the public URL and compare its predicted digits and model version with those references. No model download is required. Save a screenshot with URL, input, image, and output visible.
-- [ ] **09.7 Record the operational sequence.** Put the exact successful commands in the README, including how to create a new training Job for a future run. For retraining with this design, stop inference first, complete training, and restart inference afterward.
+- [x] **09.7 Record the operational sequence.** Put the exact successful commands in the README, including how to create a new training Job for a future run. For retraining with this design, stop inference first, complete training, and restart inference afterward.
+
+The public HTTP smoke test passed without port forwarding. The browser check and screenshot in 09.5 and 09.6 are pending. [Public smoke test](evidence/gke-smoke.log)
 
 **Deliverables:** Completed cloud training Job, ready inference Deployment, public URL, cloud evidence.
 

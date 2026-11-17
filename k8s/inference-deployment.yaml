@@ -18,7 +18,7 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: inference
-          image: us-central1-docker.pkg.dev/summer-bond-475605-r6/mnist-hw4/inference:v1
+          image: us-central1-docker.pkg.dev/summer-bond-475605-r6/mnist-hw4/inference:v2
           env:
             - name: MODEL_DIR
               value: /models
