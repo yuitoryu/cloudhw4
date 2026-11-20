@@ -17,3 +17,6 @@ datasets/
 artifacts/
 *.pt
 *.pth
+/AGENTS.md
+/ASSIGNMENT_PLAN.md
+/docs/

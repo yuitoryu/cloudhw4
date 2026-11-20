@@ -4,7 +4,7 @@ A CPU-only training Job saves its model on a persistent volume. A separate FastA
 
 ## Prerequisites and submission
 
-The assignment requires CPU-only Google Cloud deployment, an interactive hosted URL, source files (40 points), and a report under five pages (60 points). Deadline, upload format, grading URL availability period, and additional course cloud restrictions are open questions. The requirements below follow ASSIGNMENT_PLAN.md.
+The assignment requires CPU-only Google Cloud deployment, an interactive hosted URL, source files (40 points), and a report under five pages (60 points). Deadline, upload format, grading URL availability period, and additional course cloud restrictions are open questions.
 
 | Requirement | Deliverable or evidence |
 |---|---|
@@ -306,7 +306,7 @@ The submission includes the report PDF, the training and inference programs and 
 
 ```powershell
 New-Item -ItemType Directory -Force -Path artifacts | Out-Null
-git archive --format=zip --output=artifacts/cloudhw4-source.zip --prefix=cloudhw4/ HEAD .dockerignore .gitignore ASSIGNMENT_PLAN.md README.md common training inference k8s scripts tests evidence report/build_report.py report/report.pdf
+git archive --format=zip --output=artifacts/cloudhw4-source.zip --prefix=cloudhw4/ HEAD .dockerignore .gitignore README.md common training inference k8s scripts tests evidence report/build_report.py report/report.pdf
 if ($LASTEXITCODE -ne 0) { throw 'Could not package the submission.' }
 ```
 
