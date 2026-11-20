@@ -12,7 +12,7 @@ The assignment requires CPU-only Google Cloud deployment, an interactive hosted 
 | Persist and reload the model | k8s/pvc.yaml, training output and inference startup logs with model version |
 | Serve inference at a hosted URL | inference/app.py, inference/Dockerfile, k8s/inference-deployment.yaml and k8s/inference-service.yaml |
 | Demonstrate user interaction and frontend/backend integration | inference/static/, public URL and input/output screenshots of image selection and prediction |
-| Explain workflow, implementation, course concepts, observations, issues, self-healing and sources | [Four-page report](report/report.pdf) with measurements, public browser output and Pod replacement evidence |
+| Explain workflow, implementation, course concepts, observations, issues, self-healing and sources | [Measurements and deployment evidence](evidence/measurements.md) |
 
 For grading, open the [public MNIST demo](http://35.254.41.86/) and submit image ID `42`. The page shows the image, predicted and actual digits, and the model version. The [submission section](#submission-package) lists the files and the archive command.
 
@@ -302,12 +302,10 @@ Compare the remaining cloud resources with the demo's former public IP and recor
 
 ## Submission package
 
-The submission includes the report PDF, the training and inference programs and Dockerfiles, the Kubernetes manifests, the smoke test, and the supporting evidence. From a Git checkout at the final revision, recreate the ZIP with the following. The paths select committed submission files and exclude local environments, credentials, kubeconfigs, datasets, and trained weights.
+The source package includes the training and inference programs and Dockerfiles, the Kubernetes manifests, the smoke test, and the supporting evidence. From a Git checkout at the final revision, recreate the ZIP with the following. The paths select committed submission files and exclude local environments, credentials, kubeconfigs, datasets, and trained weights.
 
 ```powershell
 New-Item -ItemType Directory -Force -Path artifacts | Out-Null
-git archive --format=zip --output=artifacts/cloudhw4-source.zip --prefix=cloudhw4/ HEAD .dockerignore .gitignore README.md common training inference k8s scripts tests evidence report/build_report.py report/report.pdf
+git archive --format=zip --output=artifacts/cloudhw4-source.zip --prefix=cloudhw4/ HEAD .dockerignore .gitignore README.md common training inference k8s scripts tests evidence
 if ($LASTEXITCODE -ne 0) { throw 'Could not package the submission.' }
 ```
-
-To rebuild the report, install `reportlab` in a Python environment and run `python report/build_report.py` from the repository root. The script uses the captured GKE browser image in `evidence/`.
